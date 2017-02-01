@@ -493,7 +493,7 @@ function * _postMessage (action: PostMessage): SagaGenerator<any, any> {
       author,
       editedCount: 0,
       outboxID,
-      key: outboxID,
+      key: Constants.messageKey('outboxID', outboxID),
       timestamp: Date.now(),
       messageState: hasPendingFailure ? 'failed' : 'pending',
       message: new HiddenString(action.payload.text.stringValue()),
@@ -1021,7 +1021,7 @@ function _maybeAddTimestamp (message: Message, prevMessage: Message): MaybeTimes
     return {
       type: 'Timestamp',
       timestamp: message.timestamp,
-      key: `timestamp:${message.timestamp}`,
+      key: Constants.messageKey('timestamp', message.timestamp),
     }
   }
   return null
@@ -1041,7 +1041,7 @@ function _unboxedToMessage (message: MessageUnboxed, idx: number, yourName, your
       deviceName: yourDeviceName,
       deviceType: isMobile ? 'mobile' : 'desktop',
       editedCount: 0,
-      key: payload.outboxID,
+      key: Constants.messageKey('outboxID', payload.outboxID),
       message: new HiddenString(messageText && messageText.body || ''),
       messageState,
       outboxID: outboxIDToKey(payload.outboxID),
@@ -1075,7 +1075,7 @@ function _unboxedToMessage (message: MessageUnboxed, idx: number, yourName, your
             message: new HiddenString(payload.messageBody && payload.messageBody.text && payload.messageBody.text.body || ''),
             messageState: 'sent', // TODO, distinguish sent/pending once CORE sends it.
             outboxID,
-            key: common.messageID,
+            key: Constants.messageKey('messageID', common.messageID),
           }
         case CommonMessageType.attachment: {
           if (!payload.messageBody.attachment) {
@@ -1104,7 +1104,7 @@ function _unboxedToMessage (message: MessageUnboxed, idx: number, yourName, your
             hdPreviewPath: null,
             previewSize,
             downloadedPath: null,
-            key: common.messageID,
+            key: Constants.messageKey('messageID', common.messageID),
           }
         }
         case CommonMessageType.attachmentuploaded: {
@@ -1118,7 +1118,7 @@ function _unboxedToMessage (message: MessageUnboxed, idx: number, yourName, your
           const previewSize = preview && preview.metadata && Constants.parseMetadataPreviewSize(preview.metadata)
 
           return {
-            key: common.messageID,
+            key: Constants.messageKey('messageID', common.messageID),
             messageID: common.messageID,
             targetMessageID: attachmentUploaded.messageID,
             timestamp: common.timestamp,
@@ -1133,21 +1133,24 @@ function _unboxedToMessage (message: MessageUnboxed, idx: number, yourName, your
           }
         }
         case CommonMessageType.delete:
+          const deletedIDs = payload.messageBody.delete && payload.messageBody.delete.messageIDs || []
           return {
             type: 'Deleted',
             timestamp: payload.serverHeader.ctime,
             messageID: payload.serverHeader.messageID,
-            key: payload.serverHeader.messageID,
-            deletedIDs: payload.messageBody.delete && payload.messageBody.delete.messageIDs || [],
+            key: Constants.messageKey('messageID', common.messageID),
+            deletedIDs,
           }
         case CommonMessageType.edit: {
+          const message = new HiddenString(payload.messageBody && payload.messageBody.edit && payload.messageBody.edit.body || '')
           const outboxID = payload.clientHeader.outboxID && outboxIDToKey(payload.clientHeader.outboxID)
+          const targetMessageID = payload.messageBody.edit ? payload.messageBody.edit.messageID : 0
           return {
-            key: common.messageID,
-            message: new HiddenString(payload.messageBody && payload.messageBody.edit && payload.messageBody.edit.body || ''),
+            key: Constants.messageKey('messageID', common.messageID),
+            message,
             messageID: common.messageID,
             outboxID,
-            targetMessageID: payload.messageBody.edit ? payload.messageBody.edit.messageID : 0,
+            targetMessageID,
             timestamp: common.timestamp,
             type: 'Edit',
           }
@@ -1155,7 +1158,7 @@ function _unboxedToMessage (message: MessageUnboxed, idx: number, yourName, your
         default:
           const unhandled: UnhandledMessage = {
             ...common,
-            key: common.messageID,
+            key: Constants.messageKey('messageID', common.messageID),
             type: 'Unhandled',
           }
           return unhandled
@@ -1166,7 +1169,7 @@ function _unboxedToMessage (message: MessageUnboxed, idx: number, yourName, your
   return {
     type: 'Error', // TODO
     messageID: idx,
-    key: `error:${idx}`,
+    key: Constants.messageKey('error', idx),
     timestamp: Date.now(),
     reason: 'temp',
     conversationIDKey: conversationIDKey,
@@ -1358,7 +1361,7 @@ const _temporaryAttachmentMessageForUpload = (convID: ConversationIDKey, usernam
   outboxID,
   progress: 0,
   messageState: 'uploading',
-  key: outboxID,
+  key: Constants.messageKey('tempAttachment', outboxID),
 })
 
 function * _selectAttachment ({payload: {conversationIDKey, filename, title, type}}: Constants.SelectAttachment): SagaGenerator<any, any> {
