@@ -1021,7 +1021,7 @@ function _maybeAddTimestamp (message: Message, prevMessage: Message): MaybeTimes
     return {
       type: 'Timestamp',
       timestamp: message.timestamp,
-      key: message.timestamp,
+      key: `timestamp:${message.timestamp}`,
     }
   }
   return null
@@ -1166,7 +1166,7 @@ function _unboxedToMessage (message: MessageUnboxed, idx: number, yourName, your
   return {
     type: 'Error', // TODO
     messageID: idx,
-    key: idx,
+    key: `error:${idx}`,
     timestamp: Date.now(),
     reason: 'temp',
     conversationIDKey: conversationIDKey,
